@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>議事録要約ツール</title>
+<style>
+  :root {
+    --bg: #f7f9fc;
+    --surface: #ffffff;
+    --border: #e3e9f2;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #5b9df9;
+    --accent-hover: #4a8be8;
+    --accent-soft: #eaf3ff;
+    --danger: #d64545;
+    --danger-soft: #fdecec;
+    --shadow: 0 4px 20px rgba(91, 157, 249, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+                 "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 280px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.7;
+    resize: vertical;
+    background: #fbfcfe;
+    color: var(--text);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    background: #fff;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    transition: background 0.15s, transform 0.05s, box-shadow 0.15s;
+  }
+
+  button:active { transform: translateY(1px); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 28px;
+    box-shadow: 0 2px 8px rgba(91, 157, 249, 0.3);
+  }
+
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+  .btn-primary:disabled {
+    background: #c7d6ea;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-copy {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .btn-copy:hover { background: #dbe9fd; }
+
+  .result-card {
+    position: relative;
+  }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .section {
+    margin-bottom: 28px;
+  }
+
+  .section:last-child { margin-bottom: 0; }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: var(--text);
+  }
+
+  .section ul {
+    margin: 0;
+    padding-left: 22px;
+  }
+
+  .section li {
+    margin-bottom: 6px;
+    color: #374151;
+  }
+
+  .section li:last-child { margin-bottom: 0; }
+
+  .todo-item {
+    background: #fbfcfe;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+  }
+
+  .todo-item:last-child { margin-bottom: 0; }
+
+  .todo-task {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .todo-meta {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .todo-meta span::before {
+    content: "•";
+    margin-right: 6px;
+    color: var(--accent);
+  }
+
+  .empty {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 0;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--accent-soft);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .error {
+    background: var(--danger-soft);
+    border: 1px solid #f5c2c2;
+    color: var(--danger);
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1f2937;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 10;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 600px) {
+    .container { padding: 24px 16px 60px; }
+    h1 { font-size: 22px; }
+    .card { padding: 20px; border-radius: 12px; }
+    textarea { min-height: 200px; font-size: 14px; }
+    .btn-primary { width: 100%; padding: 14px; }
+    .actions { justify-content: stretch; }
+    .result-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>議事録要約ツール</h1>
+      <p class="subtitle">議事録を貼り付けるだけで、要点・決定事項・ToDoを自動抽出します</p>
+    </header>
+
+    <section class="card">
+      <label for="minutes">議事録</label>
+      <textarea
+        id="minutes"
+        placeholder="ここに議事録テキストを貼り付けてください..."
+        spellcheck="false"
+      ></textarea>
+      <div class="actions">
+        <button id="summarize-btn" class="btn-primary">要約する</button>
+      </div>
+    </section>
+
+    <section id="error-area" class="card hidden">
+      <div id="error-message" class="error"></div>
+    </section>
+
+    <section id="loading-area" class="card hidden">
+      <div class="loading">
+        <div class="spinner"></div>
+        <span>要約中です...</span>
+      </div>
+    </section>
+
+    <section id="result-area" class="card result-card hidden">
+      <div class="result-header">
+        <h2>要約結果</h2>
+        <button id="copy-btn" class="btn-copy">コピー</button>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">📌 会議の概要</h3>
+        <ul id="summary-list"></ul>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">✅ 決定事項</h3>
+        <ul id="decisions-list"></ul>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">📋 ToDo</h3>
+        <div id="todos-list"></div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">🔜 次のアクション</h3>
+        <ul id="next-actions-list"></ul>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">コピーしました</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const minutesEl = $("minutes");
+  const summarizeBtn = $("summarize-btn");
+  const copyBtn = $("copy-btn");
+  const loadingArea = $("loading-area");
+  const resultArea = $("result-area");
+  const errorArea = $("error-area");
+  const errorMessage = $("error-message");
+  const toast = $("toast");
+
+  let lastResult = null;
+
+  const show = (el) => el.classList.remove("hidden");
+  const hide = (el) => el.classList.add("hidden");
+
+  function showError(msg) {
+    errorMessage.textContent = msg;
+    show(errorArea);
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+
+  function renderList(ul, items) {
+    ul.innerHTML = "";
+    if (!items || items.length === 0) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "（該当なし）";
+      ul.appendChild(li);
+      return;
+    }
+    for (const item of items) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      ul.appendChild(li);
+    }
+  }
+
+  function renderTodos(container, todos) {
+    container.innerHTML = "";
+    if (!todos || todos.length === 0) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = "（該当なし）";
+      container.appendChild(p);
+      return;
+    }
+    for (const todo of todos) {
+      const div = document.createElement("div");
+      div.className = "todo-item";
+
+      const task = document.createElement("div");
+      task.className = "todo-task";
+      task.textContent = todo.task || "";
+      div.appendChild(task);
+
+      if (todo.assignee || todo.due) {
+        const meta = document.createElement("div");
+        meta.className = "todo-meta";
+        if (todo.assignee) {
+          const s = document.createElement("span");
+          s.textContent = `担当: ${todo.assignee}`;
+          meta.appendChild(s);
+        }
+        if (todo.due) {
+          const s = document.createElement("span");
+          s.textContent = `期限: ${todo.due}`;
+          meta.appendChild(s);
+        }
+        div.appendChild(meta);
+      }
+
+      container.appendChild(div);
+    }
+  }
+
+  function renderResult(data) {
+    renderList($("summary-list"), data.summary);
+    renderList($("decisions-list"), data.decisions);
+    renderTodos($("todos-list"), data.todos);
+    renderList($("next-actions-list"), data.next_actions);
+    show(resultArea);
+  }
+
+  function buildPlainText(data) {
+    const lines = [];
+    lines.push("📌 会議の概要");
+    (data.summary || []).forEach((s) => lines.push(`  ・${s}`));
+    lines.push("");
+    lines.push("✅ 決定事項");
+    (data.decisions || []).forEach((s) => lines.push(`  ・${s}`));
+    lines.push("");
+    lines.push("📋 ToDo");
+    (data.todos || []).forEach((t) => {
+      const meta = [];
+      if (t.assignee) meta.push(`担当: ${t.assignee}`);
+      if (t.due) meta.push(`期限: ${t.due}`);
+      const suffix = meta.length ? ` (${meta.join(" / ")})` : "";
+      lines.push(`  ・${t.task}${suffix}`);
+    });
+    lines.push("");
+    lines.push("🔜 次のアクション");
+    (data.next_actions || []).forEach((s) => lines.push(`  ・${s}`));
+    return lines.join("\n");
+  }
+
+  async function summarize() {
+    const text = minutesEl.value.trim();
+    hide(errorArea);
+    hide(resultArea);
+
+    if (!text) {
+      showError("議事録を入力してください。");
+      return;
+    }
+
+    summarizeBtn.disabled = true;
+    show(loadingArea);
+
+    try {
+      const res = await fetch("/api/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ minutes: text }),
+      });
+
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const j = await res.json();
+          if (j.detail) detail = j.detail;
+        } catch (_) {}
+        throw new Error(detail);
+      }
+
+      const data = await res.json();
+      lastResult = data;
+      renderResult(data);
+    } catch (err) {
+      showError(`要約に失敗しました: ${err.message}`);
+    } finally {
+      hide(loadingArea);
+      summarizeBtn.disabled = false;
+    }
+  }
+
+  async function copyResult() {
+    if (!lastResult) return;
+    const text = buildPlainText(lastResult);
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("コピーしました");
+    } catch (_) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        showToast("コピーしました");
+      } catch (e) {
+        showToast("コピーに失敗しました");
+      }
+      document.body.removeChild(ta);
+    }
+  }
+
+  summarizeBtn.addEventListener("click", summarize);
+  copyBtn.addEventListener("click", copyResult);
+
+  minutesEl.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      summarize();
+    }
+  });
+</script>
+</body>
+</html>
